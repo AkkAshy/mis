@@ -1,19 +1,21 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime
-from sqlalchemy.dialects.postgresql import UUID
-import uuid
+from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.db.base import Base
+import uuid
+from app.db.session import Base
 
 class Patient(Base):
     __tablename__ = "patients"
 
     id = Column(Integer, primary_key=True, index=True)
-    patient_uid = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, index=True)
-    full_name = Column(String, index=True)
-    birth_date = Column(Date)
-    gender = Column(String)
-    phone = Column(String, index=True)
+    patient_uid = Column(String, unique=True, index=True, nullable=False, default=lambda: str(uuid.uuid4()))
+    full_name = Column(String, index=True, nullable=False)
+    birth_date = Column(Date, nullable=False)
+    gender = Column(String, nullable=False)
+    phone = Column(String, index=True, nullable=False)
     passport = Column(String, nullable=True)
     address = Column(String, nullable=True)
     email = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")

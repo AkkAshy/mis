@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import relationship
-from app.db.base import Base
+from app.db.session import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -10,7 +10,6 @@ class User(Base):
     full_name = Column(String, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, nullable=False)  # 'reception' or 'doctor'
+    role = Column(String, nullable=False)
     
-    # Relationships
     appointments = relationship("Appointment", back_populates="doctor", cascade="all, delete-orphan")
