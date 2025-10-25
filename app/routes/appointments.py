@@ -18,7 +18,8 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
     # Check if doctor is available at that time
     existing_appointment = db.query(AppointmentModel).filter(
         AppointmentModel.doctor_id == appointment.doctor_id,
-        AppointmentModel.date == appointment.date
+        AppointmentModel.date == appointment.date,
+        
     ).first()
     if existing_appointment:
         raise HTTPException(status_code=400, detail="Doctor is not available at this time")

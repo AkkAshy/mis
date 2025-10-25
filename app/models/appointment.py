@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.session import Base
@@ -12,6 +12,7 @@ class Appointment(Base):
     date = Column(DateTime(timezone=True))
     status = Column(String, default="scheduled")
     notes = Column(Text, nullable=True)
+    cost = Column(Numeric(10, 2), nullable=True, default=0.00)  # Стоимость приема
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
