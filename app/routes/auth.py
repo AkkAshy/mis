@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from datetime import timedelta
 from app.db.session import get_db
-from app.schemas.user import UserCreate, UserLogin, Token, UserProfile
+from app.schemas.user import UserCreate, UserLogin, Token, UserProfile, RefreshTokenRequest
 from app.models.user import User
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import get_password_hash, verify_password, create_access_token, decode_access_token
 from app.utils.dependencies import get_current_user
 import logging
 import traceback
@@ -135,17 +136,19 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
             logger.error(f"Traceback: {traceback.format_exc()}")
             # Не критично, продолжаем
         
-        # Шаг 8: Создание токена
-        logger.info("🔑 Шаг 8: Создание access token...")
+        # Шаг 8: Создание токенов
+        logger.info("🔑 Шаг 8: Создание access и refresh токенов...")
         try:
             access_token = create_access_token(data={"sub": user.username})
-            logger.info(f"   Token created (first 20 chars): {access_token[:20]}...")
-            logger.info("✅ Токен создан")
+            refresh_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(days=7))
+            logger.info(f"   Access token created (first 20 chars): {access_token[:20]}...")
+            logger.info(f"   Refresh token created (first 20 chars): {refresh_token[:20]}...")
+            logger.info("✅ Токены созданы")
         except Exception as e:
-            logger.error(f"❌ Ошибка при создании токена: {str(e)}")
+            logger.error(f"❌ Ошибка при создании токенов: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Token creation error: {str(e)}")
-        
+
         logger.info("=" * 80)
         logger.info("✅ РЕГИСТРАЦИЯ УСПЕШНО ЗАВЕРШЕНА")
         logger.info(f"   User ID: {db_user.id}")
@@ -153,8 +156,8 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         logger.info(f"   Email: {db_user.email}")
         logger.info(f"   Role: {db_user.role}")
         logger.info("=" * 80)
-        
-        return {"access_token": access_token, "token_type": "bearer"}
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
         
     except HTTPException:
         # Пробрасываем HTTPException дальше
@@ -224,25 +227,27 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Password verification error: {str(e)}")
         
-        # Шаг 3: Создание токена
-        logger.info("🔑 Шаг 3: Создание access token...")
+        # Шаг 3: Создание токенов
+        logger.info("🔑 Шаг 3: Создание access и refresh токенов...")
         try:
             access_token = create_access_token(data={"sub": user.username})
-            logger.info(f"   Token created (first 20 chars): {access_token[:20]}...")
-            logger.info("✅ Токен создан")
+            refresh_token = create_access_token(data={"sub": user.username}, expires_delta=timedelta(days=7))
+            logger.info(f"   Access token created (first 20 chars): {access_token[:20]}...")
+            logger.info(f"   Refresh token created (first 20 chars): {refresh_token[:20]}...")
+            logger.info("✅ Токены созданы")
         except Exception as e:
-            logger.error(f"❌ Ошибка при создании токена: {str(e)}")
+            logger.error(f"❌ Ошибка при создании токенов: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Token creation error: {str(e)}")
-        
+
         logger.info("=" * 80)
         logger.info("✅ ВХОД УСПЕШНО ЗАВЕРШЕН")
         logger.info(f"   User ID: {db_user.id}")
         logger.info(f"   Username: {db_user.username}")
         logger.info(f"   Role: {db_user.role}")
         logger.info("=" * 80)
-        
-        return {"access_token": access_token, "token_type": "bearer"}
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
         
     except HTTPException:
         raise
@@ -270,3 +275,67 @@ def get_profile(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         role=current_user.role
     )
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(request: RefreshTokenRequest):
+    """
+    Обновление access token с помощью refresh token
+    """
+    try:
+        logger.info("=" * 80)
+        logger.info("🔄 НАЧАЛО ОБНОВЛЕНИЯ ТОКЕНА")
+        logger.info(f"🔑 Refresh token length: {len(request.refresh_token) if request.refresh_token else 0} chars")
+
+        # Шаг 1: Декодирование refresh token
+        logger.info("🔓 Шаг 1: Декодирование refresh token...")
+        payload = decode_access_token(request.refresh_token)
+        if payload is None:
+            logger.warning("⚠️ Refresh token недействителен")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token"
+            )
+        logger.info("✅ Refresh token декодирован")
+
+        # Шаг 2: Получение username из payload
+        logger.info("👤 Шаг 2: Извлечение username...")
+        username = payload.get("sub")
+        if username is None:
+            logger.warning("⚠️ Username не найден в refresh token")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid refresh token"
+            )
+        logger.info(f"✅ Username извлечен: {username}")
+
+        # Шаг 3: Создание нового access token
+        logger.info("🔑 Шаг 3: Создание нового access token...")
+        access_token = create_access_token(data={"sub": username})
+        logger.info(f"   Новый токен создан (first 20 chars): {access_token[:20]}...")
+        logger.info("✅ Новый access token создан")
+
+        # Шаг 4: Создание нового refresh token
+        logger.info("🔑 Шаг 4: Создание нового refresh token...")
+        refresh_token = create_access_token(data={"sub": username}, expires_delta=timedelta(days=7))
+        logger.info(f"   Новый refresh токен создан (first 20 chars): {refresh_token[:20]}...")
+        logger.info("✅ Новый refresh token создан")
+
+        logger.info("=" * 80)
+        logger.info("✅ ОБНОВЛЕНИЕ ТОКЕНА УСПЕШНО ЗАВЕРШЕНО")
+        logger.info("=" * 80)
+
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("❌ КРИТИЧЕСКАЯ ОШИБКА ПРИ ОБНОВЛЕНИИ ТОКЕНА")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Traceback:\n{traceback.format_exc()}")
+        logger.error("=" * 80)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected refresh error: {str(e)}"
+        )

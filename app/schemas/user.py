@@ -14,6 +14,7 @@ class UserLogin(BaseModel):
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str
 
 class TokenData(BaseModel):
@@ -25,3 +26,6 @@ class UserProfile(BaseModel):
     full_name: str
     email: str
     role: str
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
