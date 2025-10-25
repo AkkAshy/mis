@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
-from app.schemas.user import UserCreate, UserLogin, Token
+from app.schemas.user import UserCreate, UserLogin, Token, UserProfile
 from app.models.user import User
 from app.core.security import get_password_hash, verify_password, create_access_token
+from app.utils.dependencies import get_current_user
 import logging
 import traceback
 
@@ -253,6 +254,19 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         logger.error(f"Traceback:\n{traceback.format_exc()}")
         logger.error("=" * 80)
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"Unexpected login error: {str(e)}"
         )
+
+@router.get("/profile", response_model=UserProfile)
+def get_profile(current_user: User = Depends(get_current_user)):
+    """
+    Получение профиля текущего пользователя
+    """
+    return UserProfile(
+        id=current_user.id,
+        username=current_user.username,
+        full_name=current_user.full_name,
+        email=current_user.email,
+        role=current_user.role
+    )

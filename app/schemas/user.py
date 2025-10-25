@@ -18,3 +18,10 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     username: Optional[str] = None
+
+class UserProfile(BaseModel):
+    id: int
+    username: str
+    full_name: str
+    email: str
+    role: str

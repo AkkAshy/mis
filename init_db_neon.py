@@ -1,157 +1,130 @@
 #!/usr/bin/env python3
 """
-Скрипт для инициализации базы данных Neon PostgreSQL
-Создает все таблицы для Medical Information System
+Быстрое создание таблиц в Neon PostgreSQL
+Запустите: python create_tables_quick.py
 """
 
-import os
-import sys
-
-# Добавляем путь к проекту
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from sqlalchemy import create_engine, text
-from app.db.base import Base
-from app.core.config import settings
 
-def init_database():
-    """Инициализация базы данных"""
+# Ваша строка подключения к Neon
+DATABASE_URL = "postgresql://neondb_owner:npg_wo9MZKGJ1zym@ep-calm-dew-a86c7qwq-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+def create_tables():
+    print("🔧 Создание таблиц в Neon PostgreSQL...")
     print("=" * 80)
-    print("🗄️  ИНИЦИАЛИЗАЦИЯ БАЗЫ ДАННЫХ NEON")
-    print("=" * 80)
-    print()
     
-    # Показываем строку подключения (скрываем пароль)
-    db_url = settings.database_url
-    if "@" in db_url:
-        parts = db_url.split("@")
-        user_part = parts[0].split("://")[1].split(":")[0]
-        db_url_safe = db_url.replace(parts[0].split("://")[1].split(":")[1], "***")
-        print(f"📡 Подключение к: {db_url_safe}")
-    else:
-        print(f"📡 Подключение к базе данных...")
+    engine = create_engine(DATABASE_URL)
     
-    print()
+    sql_commands = [
+        # Таблица users
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) NOT NULL UNIQUE,
+            full_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            hashed_password VARCHAR(255) NOT NULL,
+            role VARCHAR(50) NOT NULL
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_users_id ON users(id);",
+        "CREATE INDEX IF NOT EXISTS ix_users_username ON users(username);",
+        "CREATE INDEX IF NOT EXISTS ix_users_email ON users(email);",
+        
+        # Таблица patients
+        """
+        CREATE TABLE IF NOT EXISTS patients (
+            id SERIAL PRIMARY KEY,
+            patient_uid VARCHAR(255) NOT NULL UNIQUE,
+            full_name VARCHAR(255) NOT NULL,
+            birth_date DATE NOT NULL,
+            gender VARCHAR(20) NOT NULL,
+            phone VARCHAR(50) NOT NULL,
+            passport VARCHAR(50),
+            address TEXT,
+            email VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_patients_id ON patients(id);",
+        "CREATE INDEX IF NOT EXISTS ix_patients_patient_uid ON patients(patient_uid);",
+        "CREATE INDEX IF NOT EXISTS ix_patients_full_name ON patients(full_name);",
+        "CREATE INDEX IF NOT EXISTS ix_patients_phone ON patients(phone);",
+        
+        # Таблица appointments
+        """
+        CREATE TABLE IF NOT EXISTS appointments (
+            id SERIAL PRIMARY KEY,
+            doctor_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            patient_id INTEGER REFERENCES patients(id) ON DELETE CASCADE,
+            date TIMESTAMP WITH TIME ZONE,
+            status VARCHAR(50) DEFAULT 'scheduled',
+            notes TEXT,
+            cost NUMERIC(10, 2) DEFAULT 0.00,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITH TIME ZONE
+        );
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_appointments_id ON appointments(id);",
+        "CREATE INDEX IF NOT EXISTS ix_appointments_doctor_id ON appointments(doctor_id);",
+        "CREATE INDEX IF NOT EXISTS ix_appointments_patient_id ON appointments(patient_id);",
+    ]
     
     try:
-        # Создаем engine
-        print("🔧 Создание engine...")
-        engine = create_engine(settings.database_url)
-        print("✅ Engine создан")
-        print()
-        
-        # Проверяем подключение
-        print("🔍 Проверка подключения...")
         with engine.connect() as conn:
+            # Проверка подключения
+            print("📡 Проверка подключения к базе данных...")
             result = conn.execute(text("SELECT version()"))
             version = result.fetchone()[0]
-            print(f"✅ Подключение успешно!")
-            print(f"📊 PostgreSQL версия: {version[:50]}...")
-        print()
-        
-        # Проверяем существующие таблицы
-        print("🔍 Проверка существующих таблиц...")
-        with engine.connect() as conn:
-            result = conn.execute(text("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
-                ORDER BY table_name
-            """))
-            existing_tables = [row[0] for row in result.fetchall()]
+            print(f"✅ Подключено! PostgreSQL: {version[:60]}...")
+            print()
             
-            if existing_tables:
-                print(f"📋 Найдено таблиц: {len(existing_tables)}")
-                for table in existing_tables:
-                    print(f"   - {table}")
-            else:
-                print("📋 Таблиц не найдено (база пустая)")
-        print()
-        
-        # Создаем все таблицы
-        print("🔨 Создание таблиц...")
-        Base.metadata.create_all(bind=engine)
-        print("✅ Таблицы созданы")
-        print()
-        
-        # Проверяем созданные таблицы
-        print("🔍 Проверка созданных таблиц...")
-        with engine.connect() as conn:
+            # Создание таблиц
+            print("🔨 Создание таблиц...")
+            for i, sql in enumerate(sql_commands, 1):
+                conn.execute(text(sql))
+                conn.commit()
+                print(f"   ✓ Команда {i}/{len(sql_commands)} выполнена")
+            
+            print()
+            print("✅ Все таблицы созданы!")
+            print()
+            
+            # Проверка
+            print("📋 Проверка созданных таблиц:")
             result = conn.execute(text("""
-                SELECT table_name 
-                FROM information_schema.tables 
-                WHERE table_schema = 'public'
+                SELECT table_name, 
+                       (SELECT COUNT(*) FROM information_schema.columns 
+                        WHERE table_name = t.table_name) as columns
+                FROM information_schema.tables t
+                WHERE table_schema = 'public' 
                 ORDER BY table_name
             """))
+            
             tables = result.fetchall()
+            for table, cols in tables:
+                print(f"   ✓ {table} ({cols} колонок)")
             
-            if tables:
-                print(f"✅ Создано таблиц: {len(tables)}")
-                for table in tables:
-                    # Получаем количество колонок
-                    col_result = conn.execute(text(f"""
-                        SELECT COUNT(*) 
-                        FROM information_schema.columns 
-                        WHERE table_name = '{table[0]}'
-                    """))
-                    col_count = col_result.fetchone()[0]
-                    print(f"   ✓ {table[0]} ({col_count} колонок)")
-            else:
-                print("⚠️  Таблицы не были созданы")
-        
-        print()
-        print("=" * 80)
-        print("✅ БАЗА ДАННЫХ УСПЕШНО ИНИЦИАЛИЗИРОВАНА!")
-        print("=" * 80)
-        print()
-        print("📋 Следующие шаги:")
-        print("   1. Задеплойте на Vercel:")
-        print("      git add .")
-        print("      git commit -m 'Initialize database'")
-        print("      git push origin main")
-        print()
-        print("   2. Попробуйте зарегистрировать пользователя")
-        print()
-        print("   3. Если нужны миграции Alembic:")
-        print("      alembic upgrade head")
-        print()
-        
-        return True
-        
+            print()
+            print("=" * 80)
+            print("✅ ГОТОВО! Теперь попробуйте регистрацию на Vercel")
+            print("=" * 80)
+            
     except Exception as e:
         print()
-        print("=" * 80)
-        print("❌ ОШИБКА ПРИ ИНИЦИАЛИЗАЦИИ БАЗЫ ДАННЫХ")
-        print("=" * 80)
-        print(f"Тип ошибки: {type(e).__name__}")
-        print(f"Сообщение: {str(e)}")
+        print("❌ ОШИБКА:")
+        print(f"   {str(e)}")
         print()
-        
         import traceback
-        print("Traceback:")
-        print(traceback.format_exc())
-        print()
-        
-        print("🔧 Возможные причины:")
-        print("   1. Неверная строка подключения DATABASE_URL")
-        print("   2. База данных Neon недоступна")
-        print("   3. Недостаточно прав доступа")
-        print()
-        
+        traceback.print_exc()
         return False
-        
-    finally:
-        try:
-            engine.dispose()
-        except:
-            pass
+    
+    return True
 
 if __name__ == "__main__":
     print()
-    success = init_database()
+    success = create_tables()
     print()
     
-    if success:
-        sys.exit(0)
-    else:
-        sys.exit(1)
+    if not success:
+        exit(1)
