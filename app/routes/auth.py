@@ -247,7 +247,9 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
         logger.info(f"   Role: {db_user.role}")
         logger.info("=" * 80)
 
-        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+        return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer",
+                "role": db_user.role,
+                "full_name": db_user.full_name}
         
     except HTTPException:
         raise
