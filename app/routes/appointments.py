@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.db.session import get_db
 from app.schemas.appointment import AppointmentCreate, Appointment, AppointmentWithDoctor
 from app.schemas.patient import Patient
+from app.schemas.user import UserProfile
 from app.models.appointment import Appointment as AppointmentModel
 from app.models.patient import Patient as PatientModel
 from app.utils.dependencies import get_current_user
@@ -29,7 +30,7 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
     db.refresh(db_appointment)
     return db_appointment
 
-@router.get("/doctors/", response_model=List[User])
+@router.get("/doctors/", response_model=List[UserProfile])
 def get_doctors(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
