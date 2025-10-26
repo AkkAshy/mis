@@ -15,7 +15,6 @@ class Patient(Base):
     phone = Column(String, index=True, nullable=False)
     passport = Column(String, nullable=True)
     address = Column(String, nullable=True)
-    email = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")

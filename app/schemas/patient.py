@@ -10,7 +10,6 @@ class PatientCreate(BaseModel):
     phone: str
     passport: Optional[str] = None
     address: Optional[str] = None
-    email: Optional[str] = None
 
 class Patient(BaseModel):
     id: int
@@ -21,7 +20,6 @@ class Patient(BaseModel):
     phone: str
     passport: Optional[str] = None
     address: Optional[str] = None
-    email: Optional[str] = None
     created_at: datetime
 
     class Config:
