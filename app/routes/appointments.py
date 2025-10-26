@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
-from app.schemas.appointment import AppointmentCreate, Appointment, AppointmentWithDoctor
+from app.schemas.appointment import AppointmentCreate, Appointment, AppointmentWithDoctor, AppointmentCostUpdate
 from app.schemas.patient import Patient
 from app.schemas.user import UserProfile
 from app.models.appointment import Appointment as AppointmentModel
@@ -79,6 +79,29 @@ def finish_appointment(
         raise HTTPException(status_code=404, detail="Appointment not found")
 
     appointment.status = "done"
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
+@router.patch("/my/{appointment_id}/cost", response_model=Appointment)
+def update_appointment_cost(
+    appointment_id: int,
+    cost_update: AppointmentCostUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "doctor":
+        raise HTTPException(status_code=403, detail="Only doctors can update appointment cost")
+
+    appointment = db.query(AppointmentModel).filter(
+        AppointmentModel.id == appointment_id,
+        AppointmentModel.doctor_id == current_user.id
+    ).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    appointment.cost = cost_update.cost
     db.commit()
     db.refresh(appointment)
     return appointment

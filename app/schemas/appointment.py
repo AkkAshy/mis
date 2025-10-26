@@ -8,7 +8,7 @@ class AppointmentCreate(BaseModel):
     patient_id: int
     date: datetime
     notes: Optional[str] = None
-    cost: Optional[Decimal] = 0.00
+    cost: Optional[Decimal] = None  # Reception может оставить пустым, doctor может установить
 
 class AppointmentWithDoctor(BaseModel):
     id: int
@@ -17,7 +17,7 @@ class AppointmentWithDoctor(BaseModel):
     date: datetime
     status: str
     notes: Optional[str] = None
-    cost: Optional[Decimal] = 0.00
+    cost: Optional[Decimal] = None
     doctor_name: Optional[str] = None
 
     class Config:
@@ -30,10 +30,13 @@ class Appointment(BaseModel):
     date: datetime
     status: str
     notes: Optional[str] = None
-    cost: Optional[Decimal] = 0.00
+    cost: Optional[Decimal] = None
 
     class Config:
         from_attributes = True
 
 class AppointmentStatusUpdate(BaseModel):
     status: str  # можно только "done" или "in_progress"
+
+class AppointmentCostUpdate(BaseModel):
+    cost: Decimal  # Стоимость приема, устанавливаемая доктором

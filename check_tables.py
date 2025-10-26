@@ -4,6 +4,6 @@ DATABASE_URL = "postgresql://neondb_owner:npg_wo9MZKGJ1zym@ep-proud-art-a8xtxs9t
 
 engine = create_engine(DATABASE_URL)
 with engine.connect() as conn:
-    conn.execute(text("ALTER TABLE patients DROP COLUMN IF EXISTS email;"))
-    conn.commit()
-    print("Email column removed from patients table")
+    result = conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';"))
+    tables = result.fetchall()
+    print('Tables:', [t[0] for t in tables])
