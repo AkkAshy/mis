@@ -29,6 +29,16 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
     db.refresh(db_appointment)
     return db_appointment
 
+@router.get("/doctors/", response_model=List[User])
+def get_doctors(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "reception":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    doctors = db.query(User).filter(User.role == "doctor").all()
+    return doctors
+
 @router.get("/my", response_model=List[AppointmentWithDoctor])
 def get_my_appointments(
     status: Optional[str] = Query(None, description="Filter by status"),
