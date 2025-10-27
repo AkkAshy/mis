@@ -48,16 +48,16 @@ def get_my_appointments(
 ):
     if current_user.role != "doctor":
         raise HTTPException(status_code=403, detail="Not authorized")
-    query = db.query(AppointmentModel, User.username.label("doctor_name")).join(
-        User, AppointmentModel.doctor_id == User.id
+    query = db.query(AppointmentModel, PatientModel.full_name.label("patient_full_name")).join(
+        PatientModel, AppointmentModel.patient_id == PatientModel.id
     ).filter(AppointmentModel.doctor_id == current_user.id)
     if status:
         query = query.filter(AppointmentModel.status == status)
     results = query.all()
     appointments = []
-    for appointment, doctor_name in results:
+    for appointment, patient_full_name in results:
         appointment_data = AppointmentWithDoctor.from_orm(appointment)
-        appointment_data.doctor_name = doctor_name
+        appointment_data.patient_full_name = patient_full_name
         appointments.append(appointment_data)
     return appointments
 

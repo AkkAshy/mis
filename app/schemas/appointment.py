@@ -12,13 +12,13 @@ class AppointmentCreate(BaseModel):
 
 class AppointmentWithDoctor(BaseModel):
     id: int
+    patient_full_name: Optional[str]
     doctor_id: int
     patient_id: int
     date: datetime
     status: str
     notes: Optional[str] = None
     cost: Optional[Decimal] = None
-    doctor_name: Optional[str] = None
 
     class Config:
         from_attributes = True

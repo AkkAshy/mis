@@ -22,7 +22,6 @@ def create_tables():
             id SERIAL PRIMARY KEY,
             username VARCHAR(255) NOT NULL UNIQUE,
             full_name VARCHAR(255) NOT NULL,
-            email VARCHAR(255) NOT NULL UNIQUE,
             hashed_password VARCHAR(255) NOT NULL,
             role VARCHAR(50) NOT NULL
         );
@@ -42,7 +41,6 @@ def create_tables():
             phone VARCHAR(50) NOT NULL,
             passport VARCHAR(50),
             address TEXT,
-            email VARCHAR(255),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """,
