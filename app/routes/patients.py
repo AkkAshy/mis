@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
 from app.db.session import get_db
-from app.schemas.patient import PatientCreate, Patient
+from app.schemas.patient import PatientCreate, Patient, PatientUpdate
 from app.models.patient import Patient as PatientModel
 from app.utils.dependencies import get_current_user
 from app.models.user import User
@@ -54,11 +54,50 @@ def search_patients(
 
 @router.get("/{patient_id}", response_model=Patient)
 def get_patient(
-    patient_id: int, 
-    db: Session = Depends(get_db), 
+    patient_id: int,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
+
+@router.patch("/{patient_id}", response_model=Patient)
+def update_patient(
+    patient_id: int,
+    patient_update: PatientUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "reception":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    update_data = patient_update.dict(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(patient, field, value)
+
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+@router.delete("/{patient_id}")
+def delete_patient(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "reception":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    db.delete(patient)
+    db.commit()
+    return {"message": "Patient deleted successfully"}

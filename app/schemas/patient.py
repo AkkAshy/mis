@@ -11,6 +11,14 @@ class PatientCreate(BaseModel):
     passport: Optional[str] = None
     address: Optional[str] = None
 
+class PatientUpdate(BaseModel):
+    full_name: Optional[str] = None
+    birth_date: Optional[date] = None
+    gender: Optional[str] = None
+    phone: Optional[str] = None
+    passport: Optional[str] = None
+    address: Optional[str] = None
+
 class Patient(BaseModel):
     id: int
     patient_uid: UUID
