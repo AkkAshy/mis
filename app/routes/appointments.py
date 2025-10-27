@@ -56,8 +56,16 @@ def get_my_appointments(
     results = query.all()
     appointments = []
     for appointment, patient_full_name in results:
-        appointment_data = AppointmentWithDoctor.from_orm(appointment)
-        appointment_data.patient_full_name = patient_full_name
+        appointment_data = AppointmentWithDoctor(
+            id=appointment.id,
+            patient_full_name=patient_full_name,
+            doctor_id=appointment.doctor_id,
+            patient_id=appointment.patient_id,
+            date=appointment.date,
+            status=appointment.status,
+            notes=appointment.notes,
+            cost=appointment.cost
+        )
         appointments.append(appointment_data)
     return appointments
 
