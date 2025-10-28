@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
@@ -8,7 +8,7 @@ class AppointmentCreate(BaseModel):
     patient_id: int
     date: datetime
     notes: Optional[str] = None
-    cost: Optional[Decimal] = None  # Reception может оставить пустым, doctor может установить
+    cost: Optional[Decimal] = Field(None, ge=0, le=99999999.99)  # Reception может оставить пустым, doctor может установить
 
 class AppointmentWithDoctor(BaseModel):
     id: int
@@ -39,4 +39,4 @@ class AppointmentStatusUpdate(BaseModel):
     status: str  # можно только "done" или "in_progress"
 
 class AppointmentCostUpdate(BaseModel):
-    cost: Decimal  # Стоимость приема, устанавливаемая доктором
+    cost: Decimal = Field(..., ge=0, le=99999999.99)  # Стоимость приема, устанавливаемая доктором

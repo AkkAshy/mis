@@ -9,26 +9,136 @@ from app.models.appointment import Appointment as AppointmentModel
 from app.models.patient import Patient as PatientModel
 from app.utils.dependencies import get_current_user
 from app.models.user import User
+import logging
+import traceback
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/", response_model=Appointment)
 def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if current_user.role != "reception":
-        raise HTTPException(status_code=403, detail="Not authorized")
-    # Check if doctor is available at that time
-    existing_appointment = db.query(AppointmentModel).filter(
-        AppointmentModel.doctor_id == appointment.doctor_id,
-        AppointmentModel.date == appointment.date,
-        
-    ).first()
-    if existing_appointment:
-        raise HTTPException(status_code=400, detail="Doctor is not available at this time")
-    db_appointment = AppointmentModel(**appointment.dict())
-    db.add(db_appointment)
-    db.commit()
-    db.refresh(db_appointment)
-    return db_appointment
+    """
+    Создание нового приема с детальным логированием
+    """
+    try:
+        logger.info("=" * 80)
+        logger.info("🔵 НАЧАЛО СОЗДАНИЯ ПРИЕМА")
+        logger.info(f"👤 Reception user: {current_user.username} (ID: {current_user.id})")
+        logger.info(f"👨‍⚕️ Doctor ID: {appointment.doctor_id}")
+        logger.info(f"👤 Patient ID: {appointment.patient_id}")
+        logger.info(f"📅 Date: {appointment.date}")
+        logger.info(f"📝 Notes: {appointment.notes}")
+        logger.info(f"💰 Cost: {appointment.cost}")
+
+        # Шаг 1: Проверка авторизации
+        logger.info("🔍 Шаг 1: Проверка авторизации...")
+        try:
+            if current_user.role != "reception":
+                logger.warning(f"⚠️ Пользователь {current_user.username} не имеет роли reception")
+                raise HTTPException(status_code=403, detail="Not authorized")
+            logger.info("✅ Авторизация пройдена")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке авторизации: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Authorization check error: {str(e)}")
+
+        # Шаг 2: Проверка доступности врача
+        logger.info("🔍 Шаг 2: Проверка доступности врача...")
+        try:
+            existing_appointment = db.query(AppointmentModel).filter(
+                AppointmentModel.doctor_id == appointment.doctor_id,
+                AppointmentModel.date == appointment.date,
+            ).first()
+            if existing_appointment:
+                logger.warning(f"⚠️ Врач {appointment.doctor_id} занят на {appointment.date}")
+                raise HTTPException(status_code=400, detail="Doctor is not available at this time")
+            logger.info("✅ Врач доступен")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке доступности врача: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Doctor availability check error: {str(e)}")
+
+        # Шаг 3: Создание объекта приема
+        logger.info("📝 Шаг 3: Создание объекта приема...")
+        try:
+            db_appointment = AppointmentModel(**appointment.dict())
+            logger.info(f"   Appointment object created: {db_appointment}")
+            logger.info("✅ Объект приема создан")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при создании объекта приема: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Appointment object creation error: {str(e)}")
+
+        # Шаг 4: Добавление в сессию БД
+        logger.info("💾 Шаг 4: Добавление приема в БД...")
+        try:
+            db.add(db_appointment)
+            logger.info("   Appointment added to session")
+            logger.info("✅ Прием добавлен в сессию")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при добавлении в сессию: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Database session error: {str(e)}")
+
+        # Шаг 5: Коммит в БД
+        logger.info("💾 Шаг 5: Коммит изменений в БД...")
+        try:
+            db.commit()
+            logger.info("   Commit successful")
+            logger.info("✅ Изменения сохранены в БД")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при коммите: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            db.rollback()
+            logger.info("   Rollback executed")
+            raise HTTPException(status_code=500, detail=f"Database commit error: {str(e)}")
+
+        # Шаг 6: Обновление объекта
+        logger.info("🔄 Шаг 6: Обновление объекта приема...")
+        try:
+            db.refresh(db_appointment)
+            logger.info(f"   Appointment ID: {db_appointment.id}")
+            logger.info("✅ Объект обновлен")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при обновлении объекта: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Не критично, продолжаем
+
+        logger.info("=" * 80)
+        logger.info("✅ СОЗДАНИЕ ПРИЕМА УСПЕШНО ЗАВЕРШЕНО")
+        logger.info(f"   Appointment ID: {db_appointment.id}")
+        logger.info(f"   Doctor ID: {db_appointment.doctor_id}")
+        logger.info(f"   Patient ID: {db_appointment.patient_id}")
+        logger.info(f"   Date: {db_appointment.date}")
+        logger.info(f"   Status: {db_appointment.status}")
+        logger.info("=" * 80)
+
+        return db_appointment
+
+    except HTTPException:
+        # Пробрасываем HTTPException дальше
+        raise
+    except Exception as e:
+        logger.error("=" * 80)
+        logger.error("❌ КРИТИЧЕСКАЯ ОШИБКА ПРИ СОЗДАНИИ ПРИЕМА")
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error message: {str(e)}")
+        logger.error(f"Traceback:\n{traceback.format_exc()}")
+        logger.error("=" * 80)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unexpected appointment creation error: {str(e)}"
+        )
 
 @router.get("/doctors/", response_model=List[UserProfile])
 def get_doctors(
