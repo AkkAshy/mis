@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
 from datetime import datetime
 import uuid
 from app.db.session import Base
@@ -16,5 +17,6 @@ class Patient(Base):
     passport = Column(String, nullable=True)
     address = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 🔥 ДОБАВЛЕНО!
     
     appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")
