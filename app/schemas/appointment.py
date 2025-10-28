@@ -36,7 +36,7 @@ class Appointment(BaseModel):
         from_attributes = True
 
 class AppointmentStatusUpdate(BaseModel):
-    status: str  # можно только "done" или "in_progress"
+    status: str  # можно только "done", "in_progress" или "paid"
 
 class AppointmentCostUpdate(BaseModel):
     cost: Decimal = Field(..., ge=0, le=99999999.99)  # Стоимость приема, устанавливаемая доктором

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import uuid
 from app.db.session import get_db
-from app.schemas.patient import PatientCreate, Patient, PatientUpdate
+from app.schemas.patient import PatientCreate, Patient, PatientUpdate, PatientListResponse
 from app.models.patient import Patient as PatientModel
 from app.utils.dependencies import get_current_user
 from app.models.user import User
@@ -34,7 +34,7 @@ def create_patient(
     db.refresh(db_patient)
     return db_patient
 
-@router.get("/", response_model=List[Patient])
+@router.get("/", response_model=PatientListResponse)
 def search_patients(
     search: Optional[str] = Query(None, description="Search by name"),
     phone: Optional[str] = Query(None, description="Search by phone"),
@@ -44,13 +44,16 @@ def search_patients(
     current_user: User = Depends(get_current_user)
 ):
     query = db.query(PatientModel)
-    
+
     if search:
         query = query.filter(PatientModel.full_name.ilike(f"%{search}%"))
     if phone:
         query = query.filter(PatientModel.phone.contains(phone))
-    
-    return query.offset(skip).limit(limit).all()
+
+    total_count = db.query(PatientModel).count()
+    patients = query.offset(skip).limit(limit).all()
+
+    return PatientListResponse(patients=patients, total_count=total_count)
 
 @router.get("/{patient_id}", response_model=Patient)
 def get_patient(

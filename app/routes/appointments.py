@@ -225,6 +225,54 @@ def update_appointment_cost(
     return appointment
 
 
+@router.get("/reception/done", response_model=List[AppointmentWithDoctor])
+def get_done_appointments(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "reception":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    query = db.query(AppointmentModel, PatientModel.full_name.label("patient_full_name")).join(
+        PatientModel, AppointmentModel.patient_id == PatientModel.id
+    ).filter(AppointmentModel.status == "done")
+    results = query.all()
+    appointments = []
+    for appointment, patient_full_name in results:
+        appointment_data = AppointmentWithDoctor(
+            id=appointment.id,
+            patient_full_name=patient_full_name,
+            doctor_id=appointment.doctor_id,
+            patient_id=appointment.patient_id,
+            date=appointment.date,
+            status=appointment.status,
+            notes=appointment.notes,
+            cost=appointment.cost
+        )
+        appointments.append(appointment_data)
+    return appointments
+
+@router.patch("/reception/{appointment_id}/pay", response_model=Appointment)
+def pay_appointment(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "reception":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    appointment = db.query(AppointmentModel).filter(AppointmentModel.id == appointment_id).first()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if appointment.status != "done":
+        raise HTTPException(status_code=400, detail="Appointment must be done before payment")
+
+    appointment.status = "paid"
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
 @router.get("/patients/{patient_id}", response_model=Patient)
 def get_patient_details(patient_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if current_user.role != "doctor":

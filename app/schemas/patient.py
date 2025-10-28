@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import date, datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 class PatientCreate(BaseModel):
@@ -32,3 +32,7 @@ class Patient(BaseModel):
 
     class Config:
         from_attributes = True
+
+class PatientListResponse(BaseModel):
+    patients: List[Patient]
+    total_count: int
