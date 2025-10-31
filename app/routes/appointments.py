@@ -50,8 +50,38 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Authorization check error: {str(e)}")
 
-        # Шаг 2: Проверка доступности врача
-        logger.info("🔍 Шаг 2: Проверка доступности врача...")
+        # Шаг 2: Проверка существования врача
+        logger.info("🔍 Шаг 2: Проверка существования врача...")
+        try:
+            doctor = db.query(User).filter(User.id == appointment.doctor_id, User.role == "doctor").first()
+            if not doctor:
+                logger.warning(f"⚠️ Врач с ID {appointment.doctor_id} не найден")
+                raise HTTPException(status_code=400, detail="Doctor not found")
+            logger.info("✅ Врач существует")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке существования врача: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Doctor existence check error: {str(e)}")
+
+        # Шаг 3: Проверка существования пациента
+        logger.info("🔍 Шаг 3: Проверка существования пациента...")
+        try:
+            patient = db.query(PatientModel).filter(PatientModel.id == appointment.patient_id).first()
+            if not patient:
+                logger.warning(f"⚠️ Пациент с ID {appointment.patient_id} не найден")
+                raise HTTPException(status_code=400, detail="Patient not found")
+            logger.info("✅ Пациент существует")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"❌ Ошибка при проверке существования пациента: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Patient existence check error: {str(e)}")
+
+        # Шаг 4: Проверка доступности врача
+        logger.info("🔍 Шаг 4: Проверка доступности врача...")
         try:
             existing_appointment = db.query(AppointmentModel).filter(
                 AppointmentModel.doctor_id == appointment.doctor_id,
@@ -68,8 +98,8 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Doctor availability check error: {str(e)}")
 
-        # Шаг 3: Создание объекта приема
-        logger.info("📝 Шаг 3: Создание объекта приема...")
+        # Шаг 5: Создание объекта приема
+        logger.info("📝 Шаг 5: Создание объекта приема...")
         try:
             db_appointment = AppointmentModel(**appointment.dict())
             logger.info(f"   Appointment object created: {db_appointment}")
@@ -79,8 +109,8 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Appointment object creation error: {str(e)}")
 
-        # Шаг 4: Добавление в сессию БД
-        logger.info("💾 Шаг 4: Добавление приема в БД...")
+        # Шаг 6: Добавление в сессию БД
+        logger.info("💾 Шаг 6: Добавление приема в БД...")
         try:
             db.add(db_appointment)
             logger.info("   Appointment added to session")
@@ -90,8 +120,8 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise HTTPException(status_code=500, detail=f"Database session error: {str(e)}")
 
-        # Шаг 5: Коммит в БД
-        logger.info("💾 Шаг 5: Коммит изменений в БД...")
+        # Шаг 7: Коммит в БД
+        logger.info("💾 Шаг 7: Коммит изменений в БД...")
         try:
             db.commit()
             logger.info("   Commit successful")
@@ -103,8 +133,8 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             logger.info("   Rollback executed")
             raise HTTPException(status_code=500, detail=f"Database commit error: {str(e)}")
 
-        # Шаг 6: Обновление объекта
-        logger.info("🔄 Шаг 6: Обновление объекта приема...")
+        # Шаг 8: Обновление объекта
+        logger.info("🔄 Шаг 8: Обновление объекта приема...")
         try:
             db.refresh(db_appointment)
             logger.info(f"   Appointment ID: {db_appointment.id}")

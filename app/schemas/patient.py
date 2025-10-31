@@ -36,3 +36,8 @@ class Patient(BaseModel):
 class PatientListResponse(BaseModel):
     patients: List[Patient]
     total_count: int
+
+
+
+
+
