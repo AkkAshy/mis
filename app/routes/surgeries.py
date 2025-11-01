@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.db.session import get_db
-from app.schemas.surgery import SurgeryCreate, Surgery, SurgeryUpdate, SurgeryWithDetails
+from app.schemas.surgery import SurgeryCreate, Surgery, SurgeryUpdate, SurgeryWithDetails, SurgeryListResponse
 from app.models.surgery import Surgery as SurgeryModel
 from app.models.patient import Patient as PatientModel
 from app.models.user import User
@@ -90,7 +90,7 @@ def create_surgery(
         logger.error("=" * 80)
         raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@router.get("/", response_model=List[SurgeryWithDetails])
+@router.get("/", response_model=SurgeryListResponse)
 def get_surgeries(
     patient_id: Optional[int] = Query(None, description="Filter by patient ID"),
     surgeon_id: Optional[int] = Query(None, description="Filter by surgeon ID"),
@@ -125,6 +125,9 @@ def get_surgeries(
     if current_user.role == "doctor":
         query = query.filter(SurgeryModel.surgeon_id == current_user.id)
 
+    # Получение общего количества
+    total_count = query.count()
+
     results = query.offset(skip).limit(limit).all()
 
     surgeries = []
@@ -151,7 +154,7 @@ def get_surgeries(
         )
         surgeries.append(surgery_data)
 
-    return surgeries
+    return SurgeryListResponse(data=surgeries, total_count=total_count)
 
 @router.get("/{surgery_id}", response_model=SurgeryWithDetails)
 def get_surgery(

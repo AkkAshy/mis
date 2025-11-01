@@ -2,7 +2,7 @@
 Operations Models
 """
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import String, Date, DateTime, Text, ForeignKey, JSON
 from sqlalchemy.sql import func
 from app.db.session import Base
 
@@ -19,7 +19,7 @@ class Surgery(Base):
 
     # Информация об операции
     operation_name: Mapped[str] = mapped_column(String(255), nullable=False)  # Название операции
-    operation_date: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)  # Дата и время операции
+    operation_date: Mapped[Date] = mapped_column(Date, nullable=False)  # Дата операции
     start_time: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)  # Время начала
     end_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)  # Время окончания
 

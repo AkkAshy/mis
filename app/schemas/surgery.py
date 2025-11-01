@@ -1,13 +1,13 @@
 from pydantic import BaseModel, Field
-from datetime import datetime
-from typing import Optional, Dict, Any
+from datetime import datetime, date
+from typing import Optional, Dict, Any, List
 from decimal import Decimal
 
 class SurgeryCreate(BaseModel):
     patient_id: int
     surgeon_id: int
     operation_name: str = Field(..., max_length=255)
-    operation_date: datetime
+    operation_date: date
     start_time: datetime
     end_time: Optional[datetime] = None
     pre_op_days: Optional[int] = None
@@ -19,7 +19,7 @@ class SurgeryCreate(BaseModel):
 
 class SurgeryUpdate(BaseModel):
     operation_name: Optional[str] = Field(None, max_length=255)
-    operation_date: Optional[datetime] = None
+    operation_date: Optional[date] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
     pre_op_days: Optional[int] = None
@@ -34,7 +34,7 @@ class Surgery(BaseModel):
     patient_id: int
     surgeon_id: int
     operation_name: str
-    operation_date: datetime
+    operation_date: date
     start_time: datetime
     end_time: Optional[datetime] = None
     pre_op_days: Optional[int] = None
@@ -57,7 +57,7 @@ class SurgeryWithDetails(BaseModel):
     surgeon_id: int
     surgeon_full_name: Optional[str]
     operation_name: str
-    operation_date: datetime
+    operation_date: date
     start_time: datetime
     end_time: Optional[datetime] = None
     pre_op_days: Optional[int] = None
@@ -72,3 +72,7 @@ class SurgeryWithDetails(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SurgeryListResponse(BaseModel):
+    data: List[SurgeryWithDetails]
+    total_count: int
