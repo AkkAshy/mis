@@ -1,82 +1,83 @@
 #!/bin/bash
 
-# 🔍 Скрипт для добавления логирования в проект
-# Использование: ./enable_logging.sh
+# 🔧 Быстрое исправление ошибки Surgery updated_at
+# Использование: ./quick_fix_surgery.sh
 
 set -e
 
-echo "🔍 Добавление детального логирования для отладки"
-echo "=================================================="
+echo "🔧 ИСПРАВЛЕНИЕ ОШИБКИ: Surgery updated_at"
+echo "========================================="
 echo ""
 
-# Цвета
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Проверка наличия исходных файлов
-if [ ! -f "app/routes/auth_with_logging.py" ]; then
-    echo -e "${RED}❌ Файл app/routes/auth_with_logging.py не найден${NC}"
+# Шаг 1: Бэкап
+echo "📦 Шаг 1: Создание бэкапа..."
+if [ -f "app/models/surgery.py" ]; then
+    cp app/models/surgery.py app/models/surgery.py.backup
+    echo -e "${GREEN}✓ Бэкап создан: app/models/surgery.py.backup${NC}"
+else
+    echo -e "${RED}✗ Файл app/models/surgery.py не найден${NC}"
     exit 1
 fi
+echo ""
 
-if [ ! -f "app/core/security_with_logging.py" ]; then
-    echo -e "${RED}❌ Файл app/core/security_with_logging.py не найден${NC}"
+# Шаг 2: Замена строки в файле
+echo "🔄 Шаг 2: Обновление модели Surgery..."
+
+# Используем sed для замены
+sed -i.tmp 's/updated_at: Mapped\[DateTime\] = mapped_column(DateTime(timezone=True), onupdate=func.now())/updated_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())/' app/models/surgery.py
+
+if [ $? -eq 0 ]; then
+    rm app/models/surgery.py.tmp
+    echo -e "${GREEN}✓ Модель обновлена${NC}"
+else
+    echo -e "${RED}✗ Не удалось обновить модель${NC}"
     exit 1
 fi
+echo ""
 
-# Создание резервных копий
-echo "📦 Создание резервных копий..."
+# Шаг 3: Применение миграции
+echo "🗄️ Шаг 3: Применение миграции к БД..."
 
-if [ -f "app/routes/auth.py" ]; then
-    cp app/routes/auth.py app/routes/auth.py.backup
-    echo -e "${GREEN}✓ Создана резервная копия: app/routes/auth.py.backup${NC}"
+# Проверяем, есть ли миграция
+if [ -f "alembic/versions/fix_surgery_updated_at.py" ]; then
+    echo -e "${GREEN}✓ Миграция найдена${NC}"
+    
+    # Применяем миграцию
+    alembic upgrade head
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✓ Миграция применена${NC}"
+    else
+        echo -e "${YELLOW}⚠ Возможно, миграция уже применена${NC}"
+    fi
 else
-    echo -e "${YELLOW}⚠ Файл app/routes/auth.py не найден${NC}"
+    echo -e "${RED}✗ Миграция не найдена в alembic/versions/${NC}"
+    echo "   Скопируйте файл fix_surgery_updated_at.py в alembic/versions/"
+    exit 1
 fi
-
-if [ -f "app/core/security.py" ]; then
-    cp app/core/security.py app/core/security.py.backup
-    echo -e "${GREEN}✓ Создана резервная копия: app/core/security.py.backup${NC}"
-else
-    echo -e "${YELLOW}⚠ Файл app/core/security.py не найден${NC}"
-fi
-
 echo ""
 
-# Замена файлов
-echo "🔄 Замена файлов на версии с логированием..."
-
-cp app/routes/auth_with_logging.py app/routes/auth.py
-echo -e "${GREEN}✓ Заменен: app/routes/auth.py${NC}"
-
-cp app/core/security_with_logging.py app/core/security.py
-echo -e "${GREEN}✓ Заменен: app/core/security.py${NC}"
+# Шаг 4: Git
+echo "📝 Шаг 4: Подготовка к коммиту..."
+git add app/models/surgery.py
 
 echo ""
-
-# Git
-echo "📝 Подготовка к коммиту..."
-git add app/routes/auth.py app/core/security.py
-
-echo ""
-echo -e "${GREEN}✅ Логирование успешно добавлено!${NC}"
+echo -e "${GREEN}✅ ИСПРАВЛЕНИЕ ЗАВЕРШЕНО!${NC}"
 echo ""
 echo "📋 Следующие шаги:"
 echo "  1. Закоммитьте изменения:"
-echo "     ${YELLOW}git commit -m 'Add detailed logging for debugging'${NC}"
+echo -e "     ${YELLOW}git commit -m 'Fix: surgery updated_at field with server_default'${NC}"
 echo ""
 echo "  2. Задеплойте на Vercel:"
-echo "     ${YELLOW}git push origin main${NC}"
+echo -e "     ${YELLOW}git push origin main${NC}"
 echo ""
-echo "  3. Попробуйте зарегистрировать пользователя"
+echo "  3. Попробуйте создать операцию снова"
 echo ""
-echo "  4. Проверьте логи в Vercel Dashboard:"
-echo "     Deployments → Latest → View Function Logs"
-echo ""
-echo "  5. Найдите строки с 🔵 и ❌ для отладки"
-echo ""
-echo "💡 Для отката изменений:"
-echo "   ${YELLOW}./disable_logging.sh${NC}"
+echo "💡 Если нужно откатить изменения:"
+echo -e "   ${YELLOW}cp app/models/surgery.py.backup app/models/surgery.py${NC}"
 echo ""
