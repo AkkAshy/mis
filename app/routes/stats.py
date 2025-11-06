@@ -36,6 +36,8 @@ def get_general_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Общая статистика системы"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     
     # Общее количество пациентов
@@ -83,6 +85,8 @@ def get_appointment_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика по записям"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     total_appointments = db.query(Appointment).count()
     completed_appointments = db.query(Appointment).filter(Appointment.status == "done").count()
     pending_appointments = db.query(Appointment).filter(Appointment.status == "scheduled").count()
@@ -101,6 +105,8 @@ def get_patient_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика по пациентам"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
@@ -129,6 +135,8 @@ def get_doctors_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика по врачам"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     doctors = db.query(User).filter(User.role == "doctor").all()
     stats = []
     
@@ -162,6 +170,8 @@ def get_daily_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Ежедневная статистика за последние N дней"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     start_date, end_date = get_date_range(days)
     
     # Получаем все даты в диапазоне
@@ -200,6 +210,8 @@ def get_weekly_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Недельная статистика"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     weekly_stats = []
     
@@ -268,6 +280,8 @@ def get_time_range_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика за произвольный период"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date must be before end date")
     
@@ -332,6 +346,8 @@ def get_doctor_performance(
     current_user: User = Depends(get_current_user)
 ):
     """Статистика производительности врачей"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     start_date, end_date = get_date_range(days)
     doctors = db.query(User).filter(User.role == "doctor").all()
     performance_stats = []
@@ -390,6 +406,8 @@ def get_stats_overview(
     current_user: User = Depends(get_current_user)
 ):
     """Общий обзор статистики"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     # Получаем общую статистику
     general_stats = get_general_stats(db, current_user)
     appointment_stats = get_appointment_stats(db, current_user)
@@ -417,6 +435,8 @@ def get_financial_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Общая финансовая статистика"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
@@ -468,6 +488,8 @@ def get_doctors_financial_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Финансовая статистика по врачам"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
@@ -541,6 +563,8 @@ def get_daily_financial_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Ежедневная финансовая статистика"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     start_date, end_date = get_date_range(days)
     
     current_date = start_date
@@ -587,6 +611,8 @@ def get_weekly_financial_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Недельная финансовая статистика"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     today = date.today()
     weekly_stats = []
     
@@ -670,6 +696,8 @@ def get_time_range_financial_stats(
     current_user: User = Depends(get_current_user)
 ):
     """Финансовая статистика за произвольный период"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     if start_date > end_date:
         raise HTTPException(status_code=400, detail="Start date must be before end date")
     
@@ -754,6 +782,8 @@ def get_doctor_performance_financial(
     current_user: User = Depends(get_current_user)
 ):
     """Финансовая производительность врачей"""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can access statistics")
     start_date, end_date = get_date_range(days)
     doctors = db.query(User).filter(User.role == "doctor").all()
     performance_stats = []
