@@ -17,6 +17,8 @@ class Patient(Base):
     passport = Column(String, nullable=True)
     address = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # 🔥 ДОБАВЛЕНО!
-    
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
     appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")
+    queues = relationship("Queue", back_populates="patient", cascade="all, delete-orphan")
