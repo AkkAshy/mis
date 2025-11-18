@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
 from typing import List, Optional
 import uuid
+import logging
+import traceback
 from datetime import date
 from app.db.session import get_db
 from app.schemas.patient import PatientCreate, Patient, PatientUpdate, PatientListResponse
@@ -10,6 +12,8 @@ from app.models.patient import Patient as PatientModel
 from app.models.queue import Queue as QueueModel
 from app.utils.dependencies import get_current_user
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -134,13 +138,31 @@ def delete_patient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "reception":
-        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        logger.info(f"🗑️ Attempting to delete patient {patient_id} by user {current_user.username}")
 
-    patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+        if current_user.role != "reception":
+            logger.warning(f"⚠️ User {current_user.username} not authorized to delete patients")
+            raise HTTPException(status_code=403, detail="Not authorized")
 
-    db.delete(patient)
-    db.commit()
-    return {"message": "Patient deleted successfully"}
+        patient = db.query(PatientModel).filter(PatientModel.id == patient_id).first()
+        if not patient:
+            logger.warning(f"⚠️ Patient {patient_id} not found")
+            raise HTTPException(status_code=404, detail="Patient not found")
+
+        patient_name = patient.full_name
+        logger.info(f"📝 Deleting patient: {patient_name} (ID: {patient_id})")
+
+        db.delete(patient)
+        db.commit()
+
+        logger.info(f"✅ Patient {patient_id} deleted successfully")
+        return {"message": "Patient deleted successfully", "patient_id": patient_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error deleting patient {patient_id}: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting patient: {str(e)}")
