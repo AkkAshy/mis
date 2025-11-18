@@ -10,6 +10,7 @@ class PatientCreate(BaseModel):
     phone: str
     passport: Optional[str] = None
     address: Optional[str] = None
+    doctor_id: int  # ID врача, к которому добавить пациента в очередь
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -29,6 +30,7 @@ class Patient(BaseModel):
     passport: Optional[str] = None
     address: Optional[str] = None
     created_at: datetime
+    queue_number: Optional[int] = None  # Номер в очереди (если пациент в очереди)
 
     class Config:
         from_attributes = True

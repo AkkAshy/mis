@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import auth, patients, appointments, stats, surgeries
-from app.models import user, patient, appointment, surgery
+from app.routes import queue as queue_router
+from app.models import user, patient, appointment, surgery, queue
 from app.db.session import engine, Base
+from app.utils.scheduler import start_scheduler
 
 app = FastAPI(
     title="Medical Information System",
@@ -25,12 +27,16 @@ app.include_router(patients.router, prefix="/patients", tags=["patients"])
 app.include_router(appointments.router, prefix="/appointments", tags=["appointments"])
 app.include_router(surgeries.router, prefix="/surgeries", tags=["surgeries"])
 app.include_router(stats.router, prefix="/stats", tags=["statistics"])
+app.include_router(queue_router.router, prefix="/queue", tags=["queue"])
 
 @app.on_event("startup")
 def on_startup():
     print(">>> Creating tables if not exist...")
     Base.metadata.create_all(bind=engine)
     print(">>> Tables created")
+
+    # Запуск планировщика для автоматического сброса очередей
+    start_scheduler()
 
 @app.get("/")
 def read_root():
