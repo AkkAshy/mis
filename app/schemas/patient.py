@@ -10,7 +10,6 @@ class PatientCreate(BaseModel):
     phone: str
     passport: Optional[str] = None
     address: Optional[str] = None
-    doctor_id: int  # ID врача, к которому добавить пациента в очередь
 
 class PatientUpdate(BaseModel):
     full_name: Optional[str] = None

@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, func
 from typing import List, Optional
+from datetime import date as date_type
 from app.db.session import get_db
 from app.schemas.appointment import AppointmentCreate, Appointment, AppointmentWithDoctor, AppointmentCostUpdate
 from app.schemas.patient import Patient
 from app.schemas.user import UserProfile
 from app.models.appointment import Appointment as AppointmentModel
 from app.models.patient import Patient as PatientModel
+from app.models.queue import Queue as QueueModel
 from app.utils.dependencies import get_current_user
 from app.models.user import User
 import logging
@@ -132,6 +135,49 @@ def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get
             db.rollback()
             logger.info("   Rollback executed")
             raise HTTPException(status_code=500, detail=f"Database commit error: {str(e)}")
+
+        # Шаг 7.5: Автоматическое добавление в очередь (FIFO - в конец)
+        logger.info("📋 Шаг 7.5: Добавление пациента в очередь...")
+        try:
+            today = date_type.today()
+
+            # Проверяем, не находится ли пациент уже в очереди у этого врача сегодня
+            existing_queue = db.query(QueueModel).filter(
+                and_(
+                    QueueModel.patient_id == appointment.patient_id,
+                    QueueModel.doctor_id == appointment.doctor_id,
+                    QueueModel.queue_date == today
+                )
+            ).first()
+
+            if not existing_queue:
+                # Находим максимальный номер в очереди этого врача
+                max_queue = db.query(func.max(QueueModel.queue_number)).filter(
+                    and_(
+                        QueueModel.doctor_id == appointment.doctor_id,
+                        QueueModel.queue_date == today
+                    )
+                ).scalar()
+
+                # Новый пациент получает следующий номер (max + 1, или 1 если очередь пустая)
+                next_queue_number = (max_queue or 0) + 1
+
+                new_queue_entry = QueueModel(
+                    patient_id=appointment.patient_id,
+                    doctor_id=appointment.doctor_id,
+                    queue_number=next_queue_number,
+                    queue_date=today
+                )
+                db.add(new_queue_entry)
+                db.commit()
+                logger.info(f"✅ Пациент добавлен в очередь с номером {next_queue_number}")
+            else:
+                logger.info(f"ℹ️ Пациент уже в очереди с номером {existing_queue.queue_number}")
+        except Exception as e:
+            logger.error(f"❌ Ошибка при добавлении в очередь: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            # Не прерываем создание appointment при ошибке в очереди
+            logger.warning("⚠️ Appointment создан, но очередь не обновлена")
 
         # Шаг 8: Обновление объекта
         logger.info("🔄 Шаг 8: Обновление объекта приема...")

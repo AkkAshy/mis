@@ -20,8 +20,7 @@ def add_patient_to_queue(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Добавление пациента в очередь врача (LIFO - новые пациенты получают номер 1).
-    Все остальные пациенты сдвигаются вниз (+1 к их номерам).
+    Добавление пациента в очередь врача (FIFO - новые пациенты добавляются в конец).
     """
     today = date.today()
 
@@ -47,19 +46,21 @@ def add_patient_to_queue(
     if existing:
         raise HTTPException(status_code=400, detail="Patient already in queue for this doctor today")
 
-    # LIFO: Сдвигаем все существующие номера вниз (+1)
-    db.query(QueueModel).filter(
+    # FIFO: Находим максимальный номер в очереди
+    max_queue = db.query(func.max(QueueModel.queue_number)).filter(
         and_(
             QueueModel.doctor_id == queue_data.doctor_id,
             QueueModel.queue_date == today
         )
-    ).update({"queue_number": QueueModel.queue_number + 1})
+    ).scalar()
 
-    # Добавляем нового пациента с номером 1
+    # Новый пациент получает следующий номер (max + 1, или 1 если очередь пустая)
+    next_queue_number = (max_queue or 0) + 1
+
     new_queue_entry = QueueModel(
         patient_id=queue_data.patient_id,
         doctor_id=queue_data.doctor_id,
-        queue_number=1,
+        queue_number=next_queue_number,
         queue_date=today
     )
 

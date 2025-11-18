@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from typing import List, Optional
 import uuid
 from datetime import date
@@ -30,39 +30,9 @@ def create_patient(
     if db_patient:
         raise HTTPException(status_code=400, detail="Patient already exists")
 
-    # Проверяем, существует ли врач
-    doctor = db.query(User).filter(User.id == patient.doctor_id).first()
-    if not doctor:
-        raise HTTPException(status_code=404, detail="Doctor not found")
-
     # UUID генерируется автоматически в модели
-    # Исключаем doctor_id из данных пациента (он не является полем модели Patient)
-    patient_data = patient.dict(exclude={'doctor_id'})
-    db_patient = PatientModel(**patient_data)
+    db_patient = PatientModel(**patient.dict())
     db.add(db_patient)
-    db.commit()
-    db.refresh(db_patient)
-
-    # Автоматически добавляем пациента в очередь к выбранному врачу (LIFO)
-    today = date.today()
-
-    # Сдвигаем все существующие номера вниз (+1) для этого врача
-    db.query(QueueModel).filter(
-        and_(
-            QueueModel.doctor_id == patient.doctor_id,
-            QueueModel.queue_date == today
-        )
-    ).update({"queue_number": QueueModel.queue_number + 1})
-
-    # Добавляем нового пациента с номером 1
-    new_queue_entry = QueueModel(
-        patient_id=db_patient.id,
-        doctor_id=patient.doctor_id,
-        queue_number=1,
-        queue_date=today
-    )
-    db.add(new_queue_entry)
-
     db.commit()
     db.refresh(db_patient)
     return db_patient
